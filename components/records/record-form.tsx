@@ -45,6 +45,15 @@ const RIGHTS = [
 
 type MediaRecorderLike = MediaRecorder
 
+let confettiFnRF: null | ((opts?: any) => void) = null
+if (typeof window !== "undefined") {
+  import("canvas-confetti")
+    .then((m) => {
+      confettiFnRF = m.default || (m as any)
+    })
+    .catch(() => {})
+}
+
 export default function RecordForm() {
   const { user } = useMe()
   const [title, setTitle] = useState("")
@@ -63,6 +72,8 @@ export default function RecordForm() {
   const [selectedCategory, setSelectedCategory] = useState<string>("")
   const [showSuccessPopup, setShowSuccessPopup] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
+  type Toast = { id: number; kind: "success" | "error" | "info"; text: string }
+  const [toasts, setToasts] = useState<Toast[]>([])
 
   const recorderRef = useRef<MediaRecorderLike | null>(null)
   const chunksRef = useRef<BlobPart[]>([])
@@ -108,6 +119,12 @@ export default function RecordForm() {
     }
     fetchCategories()
   }, [])
+
+  function showToast(text: string, kind: Toast["kind"] = "info") {
+    const id = Date.now() + Math.random()
+    setToasts((t) => [...t, { id, kind, text }])
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4000)
+  }
 
   async function startRecording() {
     setStatus(null)
@@ -222,32 +239,32 @@ export default function RecordForm() {
         uploadUuid
       })
 
-             // Step 1: Upload chunks
-       for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-         const start = chunkIndex * chunkSize
-         const end = Math.min(start + chunkSize, audioFile.size)
-         const chunk = audioFile.slice(start, end)
+      // Step 1: Upload chunks
+      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+        const start = chunkIndex * chunkSize
+        const end = Math.min(start + chunkSize, audioFile.size)
+        const chunk = audioFile.slice(start, end)
 
-         const chunkForm = new FormData()
-         chunkForm.append("chunk", chunk)
-         chunkForm.append("filename", audioFile.name)
-         chunkForm.append("chunk_index", chunkIndex.toString())
-         chunkForm.append("total_chunks", totalChunks.toString())
-         chunkForm.append("upload_uuid", uploadUuid)
+        const chunkForm = new FormData()
+        chunkForm.append("chunk", chunk)
+        chunkForm.append("filename", audioFile.name)
+        chunkForm.append("chunk_index", chunkIndex.toString())
+        chunkForm.append("total_chunks", totalChunks.toString())
+        chunkForm.append("upload_uuid", uploadUuid)
 
-         console.log(`Uploading chunk ${chunkIndex + 1}/${totalChunks}`)
-         
-         await apiFetch("/api/v1/records/upload/chunk", {
-           method: "POST",
-           body: chunkForm,
-           headers: {},
-           auth: true,
-         })
-         
-         // Update progress
-         const progress = ((chunkIndex + 1) / totalChunks) * 50 // First 50% for chunks
-         setUploadProgress(progress)
-       }
+        console.log(`Uploading chunk ${chunkIndex + 1}/${totalChunks}`)
+        
+        await apiFetch("/api/v1/records/upload/chunk", {
+          method: "POST",
+          body: chunkForm,
+          headers: {},
+          auth: true,
+        })
+        
+        // Update progress
+        const progress = ((chunkIndex + 1) / totalChunks) * 50 // First 50% for chunks
+        setUploadProgress(progress)
+      }
 
       // Step 2: Finalize upload with metadata
       const finalizeForm = new FormData()
@@ -278,51 +295,72 @@ export default function RecordForm() {
         finalizeForm.set("description", `${currentDesc}\nLocation: ${locationText.trim()}`)
       }
 
-             console.log("Finalizing upload with metadata")
-       setUploadProgress(75) // 75% for finalization
+      console.log("Finalizing upload with metadata")
+      setUploadProgress(75) // 75% for finalization
 
-       await apiFetch("/api/v1/records/upload", {
+      await apiFetch("/api/v1/records/upload", {
         method: "POST",
-         body: finalizeForm,
-         headers: {},
-         auth: true,
-       })
+        body: finalizeForm,
+        headers: {},
+        auth: true,
+      })
 
-       setUploadProgress(100) // Complete
-       
-       // Show success popup
-       setShowSuccessPopup(true)
-       
-       // Reset form after a delay
-       setTimeout(() => {
-      setTitle("")
-      setDesc("")
-      setLocationText("")
-      setCoords("")
-      setLanguage("")
-      setRights("")
-      setAudioFile(null)
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-      setObjectUrl(null)
-         setShowSuccessPopup(false)
-         setUploadProgress(0)
-       }, 3000)
+      setUploadProgress(100) // Complete
+      
+      // Show success popup and toast
+      setShowSuccessPopup(true)
+      showToast("Uploaded successfully!", "success")
+      if (confettiFnRF) confettiFnRF({ particleCount: 120, spread: 75, origin: { y: 0.2 } })
+      
+      // Reset form after a delay
+      setTimeout(() => {
+        setTitle("")
+        setDesc("")
+        setLocationText("")
+        setCoords("")
+        setLanguage("")
+        setRights("")
+        setAudioFile(null)
+        if (objectUrl) URL.revokeObjectURL(objectUrl)
+        setObjectUrl(null)
+        setShowSuccessPopup(false)
+        setUploadProgress(0)
+      }, 3000)
     } catch (e: any) {
-      console.error("Upload error:", e)
-      setStatus(e.message || "Failed to upload")
+      const msg = e.message || "Failed to upload"
+      setStatus(msg)
+      showToast(msg, "error")
     } finally {
       setLoading(false)
-       setUploadProgress(0)
+      setUploadProgress(0)
     }
   }
 
   return (
-     <div className="max-w-4xl mx-auto p-6">
-               <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl border-2 border-white/30 p-8">
-          <div className="mb-8">
-           <h1 className="text-3xl font-bold text-gray-900 mb-2 drop-shadow-sm">Upload Audio Content</h1>
-           <p className="text-gray-700 font-medium">Share your voice recordings with the community</p>
-         </div>
+    <div className="max-w-4xl mx-auto p-6">
+      {/* Toast notifications */}
+      <div className="pointer-events-none fixed top-4 right-4 z-50 space-y-2">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={`pointer-events-auto rounded-xl px-4 py-3 shadow-2xl backdrop-blur-xl border animate-bounce-in ${
+              t.kind === "success"
+                ? "bg-white/70 dark:bg-white/10 border-emerald-300/60 text-emerald-900 dark:text-emerald-200"
+                : t.kind === "error"
+                  ? "bg-white/70 dark:bg-white/10 border-red-300/60 text-red-900 dark:text-red-200"
+                  : "bg-white/70 dark:bg-white/10 border-blue-300/60 text-foreground"
+            }`}
+          >
+            <p className="text-sm">{t.text}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl border-2 border-white/30 p-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2 drop-shadow-sm">Upload Audio Content</h1>
+          <p className="text-gray-700 font-medium">Share your voice recordings with the community</p>
+        </div>
 
         <form className="space-y-8" onSubmit={onSubmit}>
           {/* Basic Information Section */}
@@ -332,7 +370,7 @@ export default function RecordForm() {
               Basic Information
             </h2>
             <div className="grid gap-6 md:grid-cols-2">
-        <div className="space-y-2">
+              <div className="space-y-2">
                 <Label htmlFor="title" className="text-sm font-semibold text-gray-800">Title *</Label>
                 <Input 
                   id="title" 
@@ -342,15 +380,15 @@ export default function RecordForm() {
                   className="h-12 text-base bg-white/90 border-2 border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
                   placeholder="Enter a descriptive title"
                 />
-        </div>
-        <div className="space-y-2">
+              </div>
+              <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-800">Language *</Label>
-          <Select value={language} onValueChange={setLanguage}>
+                <Select value={language} onValueChange={setLanguage}>
                   <SelectTrigger className="h-12 text-base bg-white/90 border-2 border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-200">
                     <SelectValue placeholder="Select language" />
-            </SelectTrigger>
-            <SelectContent>
-              {LANGUAGES.map((l) => (
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LANGUAGES.map((l) => (
                       <SelectItem key={l} value={l} className="text-base">
                         {l.charAt(0).toUpperCase() + l.slice(1)}
                       </SelectItem>
@@ -377,12 +415,12 @@ export default function RecordForm() {
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={category.id} className="text-base">
                       {category.name || category.title || `Category ${category.id}`}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
           {/* Description Section */}
           <div className="bg-purple-50/90 backdrop-blur-sm rounded-lg p-6 border-2 border-purple-200/80 shadow-lg">
@@ -390,7 +428,7 @@ export default function RecordForm() {
               <span className="w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3 shadow-md">3</span>
               Description
             </h2>
-      <div className="space-y-2">
+            <div className="space-y-2">
               <Label htmlFor="desc" className="text-sm font-semibold text-gray-800">Description *</Label>
               <Textarea 
                 id="desc" 
@@ -401,7 +439,7 @@ export default function RecordForm() {
                 placeholder="Describe your audio content in detail..."
               />
             </div>
-      </div>
+          </div>
 
           {/* Location Section */}
           <div className="bg-orange-50/90 backdrop-blur-sm rounded-lg p-6 border-2 border-orange-200/80 shadow-lg">
@@ -410,37 +448,37 @@ export default function RecordForm() {
               Location (Optional)
             </h2>
             <div className="grid gap-6 md:grid-cols-2">
-        <div className="space-y-2">
+              <div className="space-y-2">
                 <Label htmlFor="location" className="text-sm font-semibold text-gray-800">Location Name</Label>
-          <Input
-            id="location"
-            placeholder="Village/City/Region"
-            value={locationText}
-            onChange={(e) => setLocationText(e.target.value)}
+                <Input
+                  id="location"
+                  placeholder="Village/City/Region"
+                  value={locationText}
+                  onChange={(e) => setLocationText(e.target.value)}
                   className="h-12 text-base bg-white/90 border-2 border-gray-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-200"
-          />
-        </div>
-        <div className="space-y-2">
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="coords" className="text-sm font-semibold text-gray-800">Coordinates</Label>
-          <div className="flex gap-2">
-            <Input
-              id="coords"
-              placeholder="17.4575, 78.6681"
-              value={coords}
-              onChange={(e) => setCoords(e.target.value)}
+                <div className="flex gap-2">
+                  <Input
+                    id="coords"
+                    placeholder="17.4575, 78.6681"
+                    value={coords}
+                    onChange={(e) => setCoords(e.target.value)}
                     className="h-12 text-base bg-white/90 border-2 border-gray-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-200"
-            />
-            <Button
-              type="button"
+                  />
+                  <Button
+                    type="button"
                     variant="outline"
-              onClick={useMyLocation}
+                    onClick={useMyLocation}
                     className="h-12 px-4 transition-all hover:bg-orange-100 hover:border-orange-300 font-semibold"
-            >
+                  >
                     📍 Use My Location
-            </Button>
-          </div>
-        </div>
-      </div>
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Audio Section */}
@@ -455,39 +493,39 @@ export default function RecordForm() {
               <h3 className="text-lg font-semibold text-gray-800 mb-3 drop-shadow-sm">Record Audio</h3>
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-            {!recording ? (
-              <Button
-                type="button"
+                  {!recording ? (
+                    <Button
+                      type="button"
                       variant="default"
-                onClick={startRecording}
+                      onClick={startRecording}
                       className="h-12 px-6 bg-red-500 hover:bg-red-600 text-white font-semibold shadow-lg"
-              >
+                    >
                       🎙️ Start Recording
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={stopRecording}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={stopRecording}
                       className="h-12 px-6 font-semibold shadow-lg"
-              >
+                    >
                       ⏹️ Stop Recording
-              </Button>
-            )}
+                    </Button>
+                  )}
                   <div className="flex items-center gap-2">
                     <div className={`w-3 h-3 rounded-full ${recording ? 'bg-red-500 animate-pulse' : 'bg-gray-300'}`}></div>
                     <span className="text-sm font-semibold text-gray-700">
                       {recording ? "Recording..." : "Not recording"}
-          </span>
-        </div>
+                    </span>
+                  </div>
                 </div>
                 {recording && (
                   <div className="text-2xl font-mono font-bold text-red-600 drop-shadow-sm">
                     {Math.floor(elapsed / 60).toString().padStart(2, "0")}:{(elapsed % 60).toString().padStart(2, "0")}
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-        </div>
-      </div>
 
             {/* File Upload Section */}
             <div className="p-4 bg-white/95 backdrop-blur-sm rounded-lg border-2 border-red-200/80 shadow-md">
@@ -531,126 +569,126 @@ export default function RecordForm() {
               <span className="w-8 h-8 bg-yellow-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-3 shadow-md">6</span>
               Release Rights *
             </h2>
-        <div className="space-y-2">
+            <div className="space-y-2">
               <Label className="text-sm font-semibold text-gray-800">Select Rights Statement</Label>
-          <Select value={rights} onValueChange={setRights}>
+              <Select value={rights} onValueChange={setRights}>
                 <SelectTrigger className="h-12 text-base bg-white/90 border-2 border-gray-200 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-200">
                   <SelectValue placeholder="Choose rights statement" />
-            </SelectTrigger>
-            <SelectContent>
-              {RIGHTS.map((r, i) => (
+                </SelectTrigger>
+                <SelectContent>
+                  {RIGHTS.map((r, i) => (
                     <SelectItem key={i} value={r.value} className="text-base">
                       {r.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-                     {/* Submit Section */}
-           <div className="bg-gray-50/90 backdrop-blur-sm rounded-lg p-6 border-2 border-gray-200/80 shadow-lg">
-             <div className="flex items-center justify-between mb-4">
-               <h2 className="text-xl font-semibold text-gray-900 drop-shadow-sm">Ready to Upload</h2>
-               <div className="flex items-center gap-2">
-                 <div className={`w-3 h-3 rounded-full ${loading ? 'bg-blue-500 animate-pulse' : 'bg-green-500'}`}></div>
-                 <span className="text-sm font-semibold text-gray-700">
-                   {loading ? "Uploading..." : "Ready"}
-                 </span>
-               </div>
-             </div>
-             
-             {/* Upload Progress Bar */}
-             {loading && (
-               <div className="mb-4">
-                 <div className="flex justify-between text-sm text-gray-700 mb-2 font-medium">
-                   <span>Upload Progress</span>
-                   <span>{Math.round(uploadProgress)}%</span>
-                 </div>
-                 <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
-                   <div 
-                     className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full transition-all duration-300 ease-out shadow-sm"
-                     style={{ width: `${uploadProgress}%` }}
-                   ></div>
-                 </div>
-                 <div className="text-xs text-gray-600 mt-1 font-medium">
-                   {uploadProgress <= 50 ? "Uploading file chunks..." : 
-                    uploadProgress <= 75 ? "Finalizing upload..." : 
-                    "Complete!"}
-                 </div>
-               </div>
-             )}
-
-      <Button
-        type="submit"
-               className="w-full h-14 text-lg font-bold bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white transition-all duration-200 hover:shadow-xl active:scale-95 shadow-lg"
-               disabled={loading || !title || !desc || !language || !rights || !audioFile || !selectedCategory}
-             >
-               {loading ? (
-                 <div className="flex items-center gap-2">
-                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                   Uploading Content...
-                 </div>
-               ) : (
-                 <div className="flex items-center gap-2">
-                   <span>🚀</span>
-                   Upload Content
-                 </div>
-               )}
-      </Button>
-
-             {status && !showSuccessPopup && (
-               <div className={`mt-4 p-4 rounded-lg border-2 animate-in slide-in-from-bottom-2 duration-300 shadow-md ${
-                 status.includes("successfully") || status.includes("Uploaded") 
-                   ? "bg-green-50/90 border-green-200/80 text-green-800" 
-                   : "bg-red-50/90 border-red-200/80 text-red-800"
-               }`}>
-                 <div className="flex items-center gap-2">
-                   <span className="text-lg">
-                     {status.includes("successfully") || status.includes("Uploaded") ? "✅" : "⚠️"}
-                   </span>
-                   <span className="font-semibold">{status}</span>
-                 </div>
-               </div>
-             )}
-           </div>
-    </form>
-       </div>
-       
-       {/* Success Popup */}
-       {showSuccessPopup && (
-         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-300">
-           <div className="bg-white/95 backdrop-blur-md rounded-2xl p-8 max-w-md mx-4 text-center animate-in zoom-in-95 duration-300 shadow-2xl border-2 border-white/30">
-             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-               <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-               </svg>
-             </div>
-             <h3 className="text-2xl font-bold text-gray-900 mb-2 drop-shadow-sm">Upload Successful!</h3>
-             <p className="text-gray-700 mb-6 font-medium">Your audio content has been uploaded successfully.</p>
-                           <div className="flex gap-3">
-                <button
-                  onClick={() => setShowSuccessPopup(false)}
-                  className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-200 font-semibold shadow-md"
-                >
-                  Close
-                </button>
-                <button
-                  onClick={() => window.location.href = '/'}
-                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 font-semibold shadow-md"
-                >
-                  Go Home
-                </button>
-                <button
-                  onClick={logout}
-                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors duration-200 font-semibold shadow-md"
-                >
-                  Logout
-                </button>
+          {/* Submit Section */}
+          <div className="bg-gray-50/90 backdrop-blur-sm rounded-lg p-6 border-2 border-gray-200/80 shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 drop-shadow-sm">Ready to Upload</h2>
+              <div className="flex items-center gap-2">
+                <div className={`w-3 h-3 rounded-full ${loading ? 'bg-blue-500 animate-pulse' : 'bg-green-500'}`}></div>
+                <span className="text-sm font-semibold text-gray-700">
+                  {loading ? "Uploading..." : "Ready"}
+                </span>
               </div>
-           </div>
-         </div>
-       )}
-     </div>
+            </div>
+            
+            {/* Upload Progress Bar */}
+            {loading && (
+              <div className="mb-4">
+                <div className="flex justify-between text-sm text-gray-700 mb-2 font-medium">
+                  <span>Upload Progress</span>
+                  <span>{Math.round(uploadProgress)}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
+                  <div 
+                    className="bg-gradient-to-r from-blue-500 to-purple-600 h-3 rounded-full transition-all duration-300 ease-out shadow-sm"
+                    style={{ width: `${uploadProgress}%` }}
+                  ></div>
+                </div>
+                <div className="text-xs text-gray-600 mt-1 font-medium">
+                  {uploadProgress <= 50 ? "Uploading file chunks..." : 
+                   uploadProgress <= 75 ? "Finalizing upload..." : 
+                   "Complete!"}
+                </div>
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              className="w-full h-14 text-lg font-bold bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white transition-all duration-200 hover:shadow-xl active:scale-95 shadow-lg"
+              disabled={loading || !title || !desc || !language || !rights || !audioFile || !selectedCategory}
+            >
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Uploading Content...
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span>🚀</span>
+                  Upload Content
+                </div>
+              )}
+            </Button>
+
+            {status && !showSuccessPopup && (
+              <div className={`mt-4 p-4 rounded-lg border-2 animate-in slide-in-from-bottom-2 duration-300 shadow-md ${
+                status.includes("successfully") || status.includes("Uploaded") 
+                  ? "bg-green-50/90 border-green-200/80 text-green-800" 
+                  : "bg-red-50/90 border-red-200/80 text-red-800"
+              }`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">
+                    {status.includes("successfully") || status.includes("Uploaded") ? "✅" : "⚠️"}
+                  </span>
+                  <span className="font-semibold">{status}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </form>
+      </div>
+      
+      {/* Success Popup */}
+      {showSuccessPopup && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-300">
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl p-8 max-w-md mx-4 text-center animate-in zoom-in-95 duration-300 shadow-2xl border-2 border-white/30">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2 drop-shadow-sm">Upload Successful!</h3>
+            <p className="text-gray-700 mb-6 font-medium">Your audio content has been uploaded successfully.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSuccessPopup(false)}
+                className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-200 font-semibold shadow-md"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => window.location.href = '/'}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 font-semibold shadow-md"
+              >
+                Go Home
+              </button>
+              <button
+                onClick={logout}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors duration-200 font-semibold shadow-md"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

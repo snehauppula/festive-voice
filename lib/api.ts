@@ -44,17 +44,25 @@ export async function apiFetch<T = any>(
   }
 
   const res = await fetch(`${API_BASE}${path}`, init)
-  if (!res.ok) {
-    const text = await res.text().catch(() => "")
-    console.error(`API Error ${res.status}:`, {
-      url: `${API_BASE}${path}`,
-      status: res.status,
-      statusText: res.statusText,
-      response: text
-    })
-    throw new Error(text || `Request failed: ${res.status} ${res.statusText}`)
-  }
   const ct = res.headers.get("content-type") || ""
+
+  if (!res.ok) {
+    // Try to parse JSON error first
+    let data: any = null
+    try {
+      if (ct.includes("application/json")) data = await res.json()
+      else data = await res.text()
+    } catch {
+      // ignore
+    }
+    const message =
+      (data && (data.detail || data.message)) || (typeof data === "string" && data) || `Request failed: ${res.status}`
+    const err = new Error(message) as any
+    err.status = res.status
+    err.data = data
+    throw err
+  }
+
   if (ct.includes("application/json")) return (await res.json()) as T
   // @ts-expect-error allow non-json returns
   return (await res.text()) as T
