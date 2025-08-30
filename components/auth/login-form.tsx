@@ -9,22 +9,22 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { apiFetch, setAccessToken } from "@/lib/api"
 import { useRouter } from "next/navigation"
+import { useToast } from "@/components/ui/toast"
 
 type LoginResponse = { access_token?: string; token?: string; [k: string]: any }
 
 export default function LoginForm() {
   const router = useRouter()
+  const { addToast } = useToast()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [phoneNumber, setPhoneNumber] = useState("")
   const [otpCode, setOtpCode] = useState("")
-  const [status, setStatus] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function handlePasswordLogin(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    setStatus(null)
     try {
       const res = await apiFetch<LoginResponse>("/api/v1/auth/login", {
         method: "POST",
@@ -34,9 +34,20 @@ export default function LoginForm() {
       const access = res.access_token || res.token
       if (!access) throw new Error("No access token returned")
       setAccessToken(access)
+      addToast({
+        type: 'success',
+        title: 'Login Successful! 🎉',
+        message: 'Welcome back to Festive Voice Archive!',
+        animation: 'confetti-pop'
+      })
       router.replace("/submit")
     } catch (err: any) {
-      setStatus(err?.data?.detail || err.message || "Login failed")
+      addToast({
+        type: 'error',
+        title: 'Login Failed',
+        message: err?.data?.detail || err.message || "Please check your credentials",
+        animation: 'bounce-in'
+      })
     } finally {
       setLoading(false)
     }
@@ -47,16 +58,25 @@ export default function LoginForm() {
 
   async function sendLoginOtp() {
     setLoading(true)
-    setStatus(null)
     try {
       await apiFetch("/api/v1/auth/login/send-otp", {
         method: "POST",
         json: { phone_number: normalizedPhone },
         auth: false,
       })
-      setStatus("OTP sent")
+      addToast({
+        type: 'success',
+        title: 'OTP Sent! 📱',
+        message: 'Check your phone for the verification code',
+        animation: 'slide-up'
+      })
     } catch (err: any) {
-      setStatus(err?.data?.detail || err.message || "Failed to send OTP")
+      addToast({
+        type: 'error',
+        title: 'Failed to Send OTP',
+        message: err?.data?.detail || err.message || "Please try again",
+        animation: 'bounce-in'
+      })
     } finally {
       setLoading(false)
     }
@@ -64,16 +84,25 @@ export default function LoginForm() {
 
   async function resendLoginOtp() {
     setLoading(true)
-    setStatus(null)
     try {
       await apiFetch("/api/v1/auth/login/resend-otp", {
         method: "POST",
         json: { phone_number: normalizedPhone },
         auth: false,
       })
-      setStatus("OTP resent")
+      addToast({
+        type: 'info',
+        title: 'OTP Resent! 🔄',
+        message: 'A new code has been sent to your phone',
+        animation: 'glow-pulse'
+      })
     } catch (err: any) {
-      setStatus(err?.data?.detail || err.message || "Failed to resend OTP")
+      addToast({
+        type: 'error',
+        title: 'Failed to Resend OTP',
+        message: err?.data?.detail || err.message || "Please try again",
+        animation: 'bounce-in'
+      })
     } finally {
       setLoading(false)
     }
@@ -81,7 +110,6 @@ export default function LoginForm() {
 
   async function verifyLoginOtp() {
     setLoading(true)
-    setStatus(null)
     try {
       const res = await apiFetch<LoginResponse>("/api/v1/auth/login/verify-otp", {
         method: "POST",
@@ -91,36 +119,47 @@ export default function LoginForm() {
       const access = res.access_token || res.token
       if (!access) throw new Error("No access token returned")
       setAccessToken(access)
+      addToast({
+        type: 'success',
+        title: 'Login Successful! 🎉',
+        message: 'Welcome back to Festive Voice Archive!',
+        animation: 'confetti-pop'
+      })
       router.replace("/submit")
     } catch (err: any) {
-      setStatus(err?.data?.detail || err.message || "Failed to verify OTP")
+      addToast({
+        type: 'error',
+        title: 'OTP Verification Failed',
+        message: err?.data?.detail || err.message || "Please check your code",
+        animation: 'bounce-in'
+      })
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6 animate-slide-up">
       <Tabs defaultValue="password" className="w-full">
-        <TabsList className="grid grid-cols-2 w-full animate-in slide-in-from-bottom-2 duration-300">
+        <TabsList className="grid grid-cols-2 w-full glass rounded-xl p-1 animate-slide-up">
           <TabsTrigger
             value="password"
-            className="transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md"
+            className="transition-all duration-300 data-[state=active]:gradient-primary data-[state=active]:text-white rounded-lg font-semibold"
           >
-            Password
+            🔐 Password
           </TabsTrigger>
           <TabsTrigger
             value="otp"
-            className="transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-md"
+            className="transition-all duration-300 data-[state=active]:gradient-primary data-[state=active]:text-white rounded-lg font-semibold"
           >
-            OTP
+            📱 OTP
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="password" className="animate-in fade-in duration-300">
-          <form onSubmit={handlePasswordLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+        <TabsContent value="password" className="animate-slide-up">
+          <form onSubmit={handlePasswordLogin} className="space-y-6">
+            <div className="space-y-3">
+              <Label htmlFor="email" className="text-white font-semibold text-lg">📧 Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -128,11 +167,12 @@ export default function LoginForm() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="transition-all duration-200 focus:shadow-[0_0_0_4px_rgba(146,168,209,0.25)]"
+                className="h-14 text-lg glass border-white/20 text-white placeholder-white/60 focus:border-yellow-300 focus:ring-yellow-300/50 transition-all duration-300"
+                placeholder="Enter your email"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+            <div className="space-y-3">
+              <Label htmlFor="password" className="text-white font-semibold text-lg">🔒 Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -140,66 +180,75 @@ export default function LoginForm() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="transition-all duration-200 focus:shadow-[0_0_0_4px_rgba(146,168,209,0.25)]"
+                className="h-14 text-lg glass border-white/20 text-white placeholder-white/60 focus:border-yellow-300 focus:ring-yellow-300/50 transition-all duration-300"
+                placeholder="Enter your password"
               />
             </div>
             <Button
               type="submit"
               disabled={loading}
-              className="w-full relative overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg focus:ring-2 focus:ring-offset-2 focus:ring-cyan-400 active:scale-95"
+              className="w-full h-14 text-xl font-bold gradient-primary text-white rounded-xl transition-all duration-300 hover-glow press-bounce ripple-effect"
             >
-              {loading ? "Please wait..." : "Login"}
+              {loading ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Please wait...</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🚀</span>
+                  <span>Login Now!</span>
+                </div>
+              )}
             </Button>
           </form>
         </TabsContent>
 
-        <TabsContent value="otp" className="animate-in fade-in duration-300">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="otpPhone">Phone number</Label>
+        <TabsContent value="otp" className="animate-slide-up">
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <Label htmlFor="otpPhone" className="text-white font-semibold text-lg">📱 Phone Number</Label>
               <Input
                 id="otpPhone"
                 type="tel"
                 inputMode="tel"
-                placeholder="e.g.  +91xxxxxxxxxx"
+                placeholder="e.g. +91xxxxxxxxxx"
                 autoComplete="tel"
                 required
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
-                className="transition-all duration-200 focus:shadow-[0_0_0_4px_rgba(146,168,209,0.25)]"
+                className="h-14 text-lg glass border-white/20 text-white placeholder-white/60 focus:border-yellow-300 focus:ring-yellow-300/50 transition-all duration-300"
               />
-              <p className="text-xs text-muted-foreground">Enter your phone number to receive a one-time code.</p>
+              <p className="text-sm text-white/70">Enter your phone number to receive a one-time code</p>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <Button
                 type="button"
-                variant="secondary"
                 onClick={sendLoginOtp}
                 disabled={loading || !isPhoneValid}
-                className="transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm active:scale-95"
+                className="flex-1 h-12 gradient-secondary text-white rounded-xl transition-all duration-300 hover-glow press-bounce ripple-effect"
               >
-                Send OTP
+                📤 Send OTP
               </Button>
               <Button
                 type="button"
-                variant="outline"
                 onClick={resendLoginOtp}
                 disabled={loading || !isPhoneValid}
-                className="transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm active:scale-95 bg-transparent"
+                className="flex-1 h-12 glass border-white/20 text-white hover:bg-white/10 rounded-xl transition-all duration-300 hover-glow press-bounce"
               >
-                Resend OTP
+                🔄 Resend
               </Button>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="otpCode">OTP Code</Label>
+            <div className="space-y-3">
+              <Label htmlFor="otpCode" className="text-white font-semibold text-lg">🔢 OTP Code</Label>
               <Input
                 id="otpCode"
                 placeholder="Enter received code"
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value)}
-                className="transition-all duration-200 focus:shadow-[0_0_0_4px_rgba(146,168,209,0.25)]"
+                className="h-14 text-lg glass border-white/20 text-white placeholder-white/60 focus:border-yellow-300 focus:ring-yellow-300/50 transition-all duration-300"
               />
             </div>
 
@@ -207,29 +256,35 @@ export default function LoginForm() {
               type="button"
               onClick={verifyLoginOtp}
               disabled={loading || !isPhoneValid || !otpCode}
-              className="w-full transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg focus:ring-2 focus:ring-offset-2 focus:ring-cyan-400 active:scale-95"
+              className="w-full h-14 text-xl font-bold gradient-primary text-white rounded-xl transition-all duration-300 hover-glow press-bounce ripple-effect"
             >
-              Verify & Login
+              {loading ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Verifying...</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">✨</span>
+                  <span>Verify & Login!</span>
+                </div>
+              )}
             </Button>
           </div>
         </TabsContent>
       </Tabs>
 
-      <div className="text-sm text-muted-foreground">
-        <a className="underline" href="/forgot-password">
-          Forgot password?
-        </a>{" "}
-        ·{" "}
-        <a className="underline" href="/signup">
-          Create account
-        </a>
+      <div className="text-center space-y-4">
+        <div className="flex justify-center gap-6 text-sm">
+          <a className="text-white/80 hover:text-yellow-300 transition-colors duration-300 underline" href="/forgot-password">
+            🔑 Forgot password?
+          </a>
+          <span className="text-white/50">•</span>
+          <a className="text-white/80 hover:text-yellow-300 transition-colors duration-300 underline" href="/signup">
+            ✨ Create account
+          </a>
+        </div>
       </div>
-
-      {status && (
-        <p className="text-sm text-foreground/80" role="status" aria-live="polite">
-          {status}
-        </p>
-      )}
     </div>
   )
 }

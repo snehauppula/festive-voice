@@ -4,6 +4,7 @@ import { Playfair_Display, Source_Sans_3 } from "next/font/google"
 import { GeistMono } from "geist/font/mono"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
+import { ToastProvider } from "@/components/ui/toast"
 import "./globals.css"
 
 const playfair = Playfair_Display({
@@ -33,8 +34,10 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${sourceSans.variable} ${playfair.variable} ${GeistMono.variable} antialiased`}>
       <body className="font-sans bg-background text-foreground">
-        <Suspense fallback={null}>{children}</Suspense>
-        <Analytics />
+        <ToastProvider>
+          <Suspense fallback={null}>{children}</Suspense>
+          <Analytics />
+        </ToastProvider>
       </body>
     </html>
   )

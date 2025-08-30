@@ -1,47 +1,49 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  /* Vibrant Festival Theme Colors */
   --background: #ffffff;
-  --foreground: #4b5563;
+  --foreground: #2d3748;
 
-  --card: #f7f7f7;
-  --card-foreground: #4b5563;
+  --card: rgba(255, 255, 255, 0.8);
+  --card-foreground: #2d3748;
 
-  --popover: #ffffff;
-  --popover-foreground: #4b5563;
+  --popover: rgba(255, 255, 255, 0.9);
+  --popover-foreground: #2d3748;
 
-  --primary: #50b881; /* Emerald */
+  --primary: #FF6F61; /* Coral */
   --primary-foreground: #ffffff;
 
-  --secondary: #a0d3c2; /* Soft mint */
-  --secondary-foreground: #4b5563;
+  --secondary: #6B5B95; /* Purple */
+  --secondary-foreground: #ffffff;
 
-  --muted: #f7f7f7;
-  --muted-foreground: #4b5563;
+  --muted: rgba(255, 255, 255, 0.6);
+  --muted-foreground: #4a5568;
 
-  --accent: #a0d3c2;
-  --accent-foreground: #4b5563;
+  --accent: #FFD700; /* Gold */
+  --accent-foreground: #2d3748;
 
-  --destructive: #dc2626;
+  --destructive: #e53e3e;
   --destructive-foreground: #ffffff;
 
-  --border: #e0e0e0;
-  --input: #ffffff;
-  --ring: rgba(80, 184, 129, 0.5); /* Emerald focus ring */
+  --border: rgba(255, 255, 255, 0.2);
+  --input: rgba(255, 255, 255, 0.8);
+  --ring: rgba(255, 111, 97, 0.5);
 
-  --radius: 0.5rem;
+  --radius: 1rem;
 
-  --sidebar: #f7f7f7;
-  --sidebar-foreground: #4b5563;
-  --sidebar-primary: #50b881;
+  --sidebar: rgba(255, 255, 255, 0.8);
+  --sidebar-foreground: #2d3748;
+  --sidebar-primary: #FF6F61;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #a0d3c2;
-  --sidebar-accent-foreground: #4b5563;
-  --sidebar-border: #e0e0e0;
-  --sidebar-ring: rgba(80, 184, 129, 0.5);
+  --sidebar-accent: #FFD700;
+  --sidebar-accent-foreground: #2d3748;
+  --sidebar-border: rgba(255, 255, 255, 0.2);
+  --sidebar-ring: rgba(255, 111, 97, 0.5);
 }
 
 .dark {
@@ -131,6 +133,216 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-['Poppins'];
   }
+}
+
+/* Custom Animations */
+@keyframes bounce-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) translateY(-100px);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05) translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(255, 111, 97, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 111, 97, 0.6), 0 0 30px rgba(255, 215, 0, 0.4);
+  }
+}
+
+@keyframes confetti-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2) rotate(180deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(360deg);
+  }
+}
+
+@keyframes hover-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Utility Classes */
+.animate-bounce-in {
+  animation: bounce-in 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.animate-confetti-pop {
+  animation: confetti-pop 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.animate-hover-float {
+  animation: hover-float 3s ease-in-out infinite;
+}
+
+.animate-gradient-shift {
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+/* Glassmorphism */
+.glass {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.glass-dark {
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Gradient Backgrounds */
+.gradient-festival {
+  background: linear-gradient(135deg, #FF6F61, #6B5B95, #92A8D1, #88B04B);
+  background-size: 400% 400%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+.gradient-primary {
+  background: linear-gradient(135deg, #FF6F61, #FFD700);
+}
+
+.gradient-secondary {
+  background: linear-gradient(135deg, #6B5B95, #92A8D1);
+}
+
+/* Interactive Effects */
+.hover-glow:hover {
+  box-shadow: 0 0 20px rgba(255, 111, 97, 0.4);
+  transform: translateY(-2px);
+}
+
+.press-bounce:active {
+  transform: scale(0.95);
+}
+
+.ripple-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple-effect::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.5);
+  opacity: 0;
+  border-radius: 100%;
+  transform: scale(1, 1) translate(-50%);
+  transform-origin: 50% 50%;
+}
+
+.ripple-effect:active::after {
+  animation: ripple 0.6s ease-out;
+}
+
+/* Toast Notifications */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  margin-bottom: 10px;
+  border-radius: 1rem;
+  padding: 1rem 1.5rem;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  transform: translateX(100%);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.toast.show {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.toast.success {
+  border-left: 4px solid #48bb78;
+}
+
+.toast.error {
+  border-left: 4px solid #f56565;
+}
+
+.toast.info {
+  border-left: 4px solid #4299e1;
 }
