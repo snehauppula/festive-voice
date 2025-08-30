@@ -43,6 +43,15 @@ const RIGHTS = [
 
 type MediaRecorderLike = MediaRecorder
 
+let confettiFnRF: null | ((opts?: any) => void) = null
+if (typeof window !== "undefined") {
+  import("canvas-confetti")
+    .then((m) => {
+      confettiFnRF = m.default || (m as any)
+    })
+    .catch(() => {})
+}
+
 export default function RecordForm() {
   const [title, setTitle] = useState("")
   const [desc, setDesc] = useState("")
@@ -56,6 +65,8 @@ export default function RecordForm() {
   const [loading, setLoading] = useState(false)
   const [elapsed, setElapsed] = useState<number>(0)
   const [objectUrl, setObjectUrl] = useState<string | null>(null)
+  type Toast = { id: number; kind: "success" | "error" | "info"; text: string }
+  const [toasts, setToasts] = useState<Toast[]>([])
 
   const recorderRef = useRef<MediaRecorderLike | null>(null)
   const chunksRef = useRef<BlobPart[]>([])
@@ -80,6 +91,12 @@ export default function RecordForm() {
       if (timerRef.current) window.clearInterval(timerRef.current)
     }
   }, [])
+
+  function showToast(text: string, kind: Toast["kind"] = "info") {
+    const id = Date.now() + Math.random()
+    setToasts((t) => [...t, { id, kind, text }])
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4000)
+  }
 
   async function startRecording() {
     setStatus(null)
@@ -147,7 +164,8 @@ export default function RecordForm() {
         body: form,
         headers: {}, // let browser set multipart boundary
       })
-      setStatus("Uploaded successfully")
+      showToast("Uploaded successfully!", "success")
+      if (confettiFnRF) confettiFnRF({ particleCount: 120, spread: 75, origin: { y: 0.2 } })
       setTitle("")
       setDesc("")
       setLocationText("")
@@ -158,7 +176,9 @@ export default function RecordForm() {
       if (objectUrl) URL.revokeObjectURL(objectUrl)
       setObjectUrl(null)
     } catch (e: any) {
-      setStatus(e.message || "Failed to upload")
+      const msg = e.message || "Failed to upload"
+      setStatus(msg)
+      showToast(msg, "error")
     } finally {
       setLoading(false)
     }
@@ -166,6 +186,23 @@ export default function RecordForm() {
 
   return (
     <form className="space-y-6 animate-in fade-in duration-300" onSubmit={onSubmit}>
+      <div className="pointer-events-none fixed top-4 right-4 z-50 space-y-2">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={`pointer-events-auto rounded-xl px-4 py-3 shadow-2xl backdrop-blur-xl border animate-bounce-in ${
+              t.kind === "success"
+                ? "bg-white/70 dark:bg-white/10 border-emerald-300/60 text-emerald-900 dark:text-emerald-200"
+                : t.kind === "error"
+                  ? "bg-white/70 dark:bg-white/10 border-red-300/60 text-red-900 dark:text-red-200"
+                  : "bg-white/70 dark:bg-white/10 border-blue-300/60 text-foreground"
+            }`}
+          >
+            <p className="text-sm">{t.text}</p>
+          </div>
+        ))}
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="title">Title *</Label>
@@ -227,13 +264,13 @@ export default function RecordForm() {
       <div className="space-y-3">
         <Label>Audio Recording *</Label>
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {!recording ? (
               <Button
                 type="button"
                 variant="secondary"
                 onClick={startRecording}
-                className="transition-transform hover:shadow-sm active:scale-95"
+                className="transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm active:scale-95"
               >
                 Start Recording
               </Button>
@@ -242,14 +279,20 @@ export default function RecordForm() {
                 type="button"
                 variant="destructive"
                 onClick={stopRecording}
-                className="transition-transform hover:shadow-sm active:scale-95"
+                className="transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm active:scale-95"
               >
                 Stop Recording
               </Button>
             )}
-            <span className="text-sm text-muted-foreground">{recording ? "Recording..." : "Not recording"}</span>
+            <span className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span
+                className={`inline-block h-2.5 w-2.5 rounded-full ${recording ? "bg-red-500 animate-pulse" : "bg-muted-foreground/40"}`}
+                aria-hidden
+              />
+              {recording ? "Recording..." : "Not recording"}
+            </span>
           </div>
-          <span aria-live="polite" className="text-sm font-medium text-foreground/80">
+          <span aria-live="polite" className="text-sm font-medium text-foreground/80 tabular-nums">
             {recording
               ? `${Math.floor(elapsed / 60)
                   .toString()
@@ -289,9 +332,20 @@ export default function RecordForm() {
 
       <Button
         type="submit"
-        className="w-full transition-transform duration-200 hover:shadow-md active:scale-95"
+        className="w-full relative overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg active:scale-95 text-white bg-[linear-gradient(135deg,#FF6F61,#FFD700,#6B5B95)] btn-ripple"
         disabled={loading || !title || !desc || !language || !rights || !audioFile}
+        onMouseDown={(e) => {
+          const el = e.currentTarget
+          const rect = el.getBoundingClientRect()
+          const x = e.clientX - rect.left
+          const y = e.clientY - rect.top
+          el.style.setProperty("--ripple-x", `${x}px`)
+          el.style.setProperty("--ripple-y", `${y}px`)
+          el.dataset.rippling = "true"
+          requestAnimationFrame(() => setTimeout(() => (el.dataset.rippling = "false"), 700))
+        }}
       >
+        <span className="pointer-events-none absolute inset-0 opacity-0 hover:opacity-100 [mask-image:linear-gradient(90deg,transparent,black,transparent)] bg-[linear-gradient(90deg,rgba(255,255,255,.15)_0,rgba(255,255,255,.35)_50%,rgba(255,255,255,.15)_100%)] animate-[shimmer_2s_infinite]"></span>
         {loading ? "Uploading..." : "Upload Content"}
       </Button>
       {status && (
