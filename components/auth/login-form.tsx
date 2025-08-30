@@ -85,7 +85,7 @@ export default function LoginForm() {
     try {
       const res = await apiFetch<LoginResponse>("/api/v1/auth/login/verify-otp", {
         method: "POST",
-        json: { phone_number: normalizedPhone, code: otpCode },
+        json: { phone_number: normalizedPhone, otp_code: otpCode },
         auth: false,
       })
       const access = res.access_token || res.token
@@ -161,7 +161,7 @@ export default function LoginForm() {
                 id="otpPhone"
                 type="tel"
                 inputMode="tel"
-                placeholder="e.g. 7981833625 or +91xxxxxxxxxx"
+                placeholder="e.g.  +91xxxxxxxxxx"
                 autoComplete="tel"
                 required
                 value={phoneNumber}
