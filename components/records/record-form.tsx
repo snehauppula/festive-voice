@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { apiFetch } from "@/lib/api"
+import { useMe } from "@/lib/auth-store"
 
 const LANGUAGES = [
   "assamese",
@@ -36,14 +37,16 @@ const LANGUAGES = [
 ]
 
 const RIGHTS = [
-  "This work is created by me and anyone is free to use it.",
-  "This work is created by my family/friends and I took permission to upload their work.",
-  "I downloaded this from the internet and/or I don't know if it is free to share.",
+  { value: "creator", label: "This work is created by me and anyone is free to use it." },
+  { value: "family_or_friend", label: "This work is created by my family/friends and I took permission to upload their work." },
+  { value: "downloaded", label: "I downloaded this from the internet and/or I don't know if it is free to share." },
+  { value: "NA", label: "Not applicable or unknown." },
 ]
 
 type MediaRecorderLike = MediaRecorder
 
 export default function RecordForm() {
+  const { user } = useMe()
   const [title, setTitle] = useState("")
   const [desc, setDesc] = useState("")
   const [locationText, setLocationText] = useState("")
@@ -56,6 +59,8 @@ export default function RecordForm() {
   const [loading, setLoading] = useState(false)
   const [elapsed, setElapsed] = useState<number>(0)
   const [objectUrl, setObjectUrl] = useState<string | null>(null)
+  const [categories, setCategories] = useState<any[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<string>("")
 
   const recorderRef = useRef<MediaRecorderLike | null>(null)
   const chunksRef = useRef<BlobPart[]>([])
@@ -79,6 +84,27 @@ export default function RecordForm() {
       }
       if (timerRef.current) window.clearInterval(timerRef.current)
     }
+  }, [])
+
+  // Fetch categories on component mount
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const response = await apiFetch("/api/v1/categories/", {
+          method: "GET",
+          auth: true,
+        })
+        setCategories(response || [])
+        // Set first category as default if available
+        if (response && response.length > 0) {
+          setSelectedCategory(response[0].id)
+        }
+      } catch (error) {
+        console.error("Failed to fetch categories:", error)
+        setStatus("Failed to load categories")
+      }
+    }
+    fetchCategories()
   }, [])
 
   async function startRecording() {
@@ -133,20 +159,128 @@ export default function RecordForm() {
     setLoading(true)
     setStatus(null)
     try {
-      const form = new FormData()
-      form.append("title", title)
-      form.append("description", desc)
-      if (locationText) form.append("location", locationText)
-      if (coords) form.append("coordinates", coords)
-      if (language) form.append("language", language)
-      if (rights) form.append("rights", rights)
-      if (audioFile) form.append("audio", audioFile)
+      // Validate required fields
+      if (!title.trim()) {
+        setStatus("Title is required")
+        return
+      }
+      if (!desc.trim()) {
+        setStatus("Description is required")
+        return
+      }
+      if (!language) {
+        setStatus("Language selection is required")
+        return
+      }
+      if (!audioFile) {
+        setStatus("Audio file is required")
+        return
+      }
+      
+      // Validate audio file
+      const maxSize = 5 * 1024 * 1024 // 5MB
+      if (audioFile.size > maxSize) {
+        setStatus("Audio file is too large. Maximum size is 5MB.")
+        return
+      }
+      
+      // Check file type
+      const allowedTypes = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm', 'audio/mp4']
+      if (!allowedTypes.includes(audioFile.type)) {
+        setStatus("Audio file format not supported. Please use MP3, WAV, OGG, WebM, or MP4.")
+        return
+      }
+      
+      if (!rights) {
+        setStatus("Rights statement is required")
+        return
+      }
+      if (!selectedCategory) {
+        setStatus("Category selection is required")
+        return
+      }
 
-      await apiFetch("/api/v1/records/", {
-        method: "POST",
-        body: form,
-        headers: {}, // let browser set multipart boundary
+      // Check if user is authenticated
+      const token = localStorage.getItem("access_token")
+      if (!token) {
+        setStatus("Authentication required. Please log in again.")
+        return
+      }
+
+      // Implement chunked upload as per API specification
+      const uploadUuid = crypto.randomUUID()
+      const chunkSize = 1024 * 1024 // 1MB chunks
+      const totalChunks = Math.ceil(audioFile.size / chunkSize)
+
+      console.log("Starting chunked upload:", {
+        fileName: audioFile.name,
+        fileSize: audioFile.size,
+        chunkSize,
+        totalChunks,
+        uploadUuid
       })
+
+      // Step 1: Upload chunks
+      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+        const start = chunkIndex * chunkSize
+        const end = Math.min(start + chunkSize, audioFile.size)
+        const chunk = audioFile.slice(start, end)
+
+        const chunkForm = new FormData()
+        chunkForm.append("chunk", chunk)
+        chunkForm.append("filename", audioFile.name)
+        chunkForm.append("chunk_index", chunkIndex.toString())
+        chunkForm.append("total_chunks", totalChunks.toString())
+        chunkForm.append("upload_uuid", uploadUuid)
+
+        console.log(`Uploading chunk ${chunkIndex + 1}/${totalChunks}`)
+        
+        await apiFetch("/api/v1/records/upload/chunk", {
+          method: "POST",
+          body: chunkForm,
+          headers: {},
+          auth: true,
+        })
+      }
+
+      // Step 2: Finalize upload with metadata
+      const finalizeForm = new FormData()
+      finalizeForm.append("title", title.trim())
+      finalizeForm.append("description", desc.trim())
+      finalizeForm.append("language", language)
+      finalizeForm.append("release_rights", rights)
+      finalizeForm.append("media_type", "audio")
+      finalizeForm.append("category_id", selectedCategory)
+      finalizeForm.append("user_id", user?.id || "1")
+      finalizeForm.append("upload_uuid", uploadUuid)
+      finalizeForm.append("filename", audioFile.name)
+      finalizeForm.append("total_chunks", totalChunks.toString())
+      finalizeForm.append("use_uid_filename", "false")
+      
+      // Handle coordinates
+      if (coords) {
+        const [lat, lng] = coords.split(',').map(c => parseFloat(c.trim()))
+        if (!isNaN(lat) && !isNaN(lng)) {
+          finalizeForm.append("latitude", lat.toString())
+          finalizeForm.append("longitude", lng.toString())
+        }
+      }
+      
+      // Add location as description if provided
+      if (locationText) {
+        const currentDesc = finalizeForm.get("description") as string
+        finalizeForm.set("description", `${currentDesc}\nLocation: ${locationText.trim()}`)
+      }
+
+      console.log("Finalizing upload with metadata")
+
+      await apiFetch("/api/v1/records/upload", {
+        method: "POST",
+        body: finalizeForm,
+        headers: {},
+        auth: true,
+      })
+
       setStatus("Uploaded successfully")
       setTitle("")
       setDesc("")
@@ -158,6 +292,7 @@ export default function RecordForm() {
       if (objectUrl) URL.revokeObjectURL(objectUrl)
       setObjectUrl(null)
     } catch (e: any) {
+      console.error("Upload error:", e)
       setStatus(e.message || "Failed to upload")
     } finally {
       setLoading(false)
@@ -166,27 +301,60 @@ export default function RecordForm() {
 
   return (
     <form className="space-y-6 animate-in fade-in duration-300" onSubmit={onSubmit}>
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="title">Title *</Label>
-          <Input id="title" required value={title} onChange={(e) => setTitle(e.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <Label>Select Language *</Label>
-          <Select value={language} onValueChange={setLanguage}>
-            <SelectTrigger>
-              <SelectValue placeholder="-- Select a language --" />
-            </SelectTrigger>
-            <SelectContent>
-              {LANGUAGES.map((l) => (
-                <SelectItem key={l} value={l}>
-                  {l}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+             <div className="grid gap-4 md:grid-cols-2">
+         <div className="space-y-2">
+           <Label htmlFor="title">Title *</Label>
+           <Input id="title" required value={title} onChange={(e) => setTitle(e.target.value)} />
+         </div>
+         <div className="space-y-2">
+           <Label>Select Language *</Label>
+           <Select value={language} onValueChange={setLanguage}>
+             <SelectTrigger>
+               <SelectValue placeholder="-- Select a language --" />
+             </SelectTrigger>
+             <SelectContent>
+               {LANGUAGES.map((l) => (
+                 <SelectItem key={l} value={l}>
+                   {l}
+                 </SelectItem>
+               ))}
+             </SelectContent>
+           </Select>
+         </div>
+       </div>
+
+       <div className="grid gap-4 md:grid-cols-2">
+         <div className="space-y-2">
+           <Label>Select Category *</Label>
+           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+             <SelectTrigger>
+               <SelectValue placeholder="-- Select a category --" />
+             </SelectTrigger>
+             <SelectContent>
+               {categories.map((category) => (
+                 <SelectItem key={category.id} value={category.id}>
+                   {category.name || category.title || `Category ${category.id}`}
+                 </SelectItem>
+               ))}
+             </SelectContent>
+           </Select>
+         </div>
+         <div className="space-y-2">
+           <Label>Release Rights *</Label>
+           <Select value={rights} onValueChange={setRights}>
+             <SelectTrigger>
+               <SelectValue placeholder="Select rights statement" />
+             </SelectTrigger>
+             <SelectContent>
+               {RIGHTS.map((r, i) => (
+                 <SelectItem key={i} value={r.value}>
+                   {r.label}
+                 </SelectItem>
+               ))}
+             </SelectContent>
+           </Select>
+         </div>
+       </div>
 
       <div className="space-y-2">
         <Label htmlFor="desc">Description *</Label>
@@ -269,29 +437,13 @@ export default function RecordForm() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Release Rights *</Label>
-          <Select value={rights} onValueChange={setRights}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select rights statement" />
-            </SelectTrigger>
-            <SelectContent>
-              {RIGHTS.map((r, i) => (
-                <SelectItem key={i} value={r}>
-                  {r}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      
 
-      <Button
-        type="submit"
-        className="w-full transition-transform duration-200 hover:shadow-md active:scale-95"
-        disabled={loading || !title || !desc || !language || !rights || !audioFile}
-      >
+             <Button
+         type="submit"
+         className="w-full transition-transform duration-200 hover:shadow-md active:scale-95"
+         disabled={loading || !title || !desc || !language || !rights || !audioFile || !selectedCategory}
+       >
         {loading ? "Uploading..." : "Upload Content"}
       </Button>
       {status && (

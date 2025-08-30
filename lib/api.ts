@@ -46,7 +46,13 @@ export async function apiFetch<T = any>(
   const res = await fetch(`${API_BASE}${path}`, init)
   if (!res.ok) {
     const text = await res.text().catch(() => "")
-    throw new Error(text || `Request failed: ${res.status}`)
+    console.error(`API Error ${res.status}:`, {
+      url: `${API_BASE}${path}`,
+      status: res.status,
+      statusText: res.statusText,
+      response: text
+    })
+    throw new Error(text || `Request failed: ${res.status} ${res.statusText}`)
   }
   const ct = res.headers.get("content-type") || ""
   if (ct.includes("application/json")) return (await res.json()) as T
