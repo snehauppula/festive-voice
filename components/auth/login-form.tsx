@@ -141,16 +141,16 @@ export default function LoginForm() {
   return (
     <div className="space-y-6 animate-slide-up">
       <Tabs defaultValue="password" className="w-full">
-        <TabsList className="grid grid-cols-2 w-full glass rounded-xl p-1 animate-slide-up">
+        <TabsList className="grid grid-cols-2 w-full rounded-xl p-1 animate-slide-up custom-tabs-list h-12">
           <TabsTrigger
             value="password"
-            className="transition-all duration-300 data-[state=active]:gradient-primary data-[state=active]:text-white rounded-lg font-semibold"
+            className="custom-tabs-trigger"
           >
             🔐 Password
           </TabsTrigger>
           <TabsTrigger
             value="otp"
-            className="transition-all duration-300 data-[state=active]:gradient-primary data-[state=active]:text-white rounded-lg font-semibold"
+            className="custom-tabs-trigger"
           >
             📱 OTP
           </TabsTrigger>
@@ -159,7 +159,7 @@ export default function LoginForm() {
         <TabsContent value="password" className="animate-slide-up">
           <form onSubmit={handlePasswordLogin} className="space-y-6">
             <div className="space-y-3">
-              <Label htmlFor="email" className="text-white font-semibold text-lg">📧 Email</Label>
+              <Label htmlFor="email" className="text-white font-semibold text-lg drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">📧 Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -172,7 +172,7 @@ export default function LoginForm() {
               />
             </div>
             <div className="space-y-3">
-              <Label htmlFor="password" className="text-white font-semibold text-lg">🔒 Password</Label>
+              <Label htmlFor="password" className="text-white font-semibold text-lg drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">🔒 Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -187,7 +187,7 @@ export default function LoginForm() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-14 text-xl font-bold gradient-primary text-white rounded-xl transition-all duration-300 hover-glow press-bounce ripple-effect"
+              className="w-full h-14 text-xl font-bold gradient-primary text-white rounded-xl transition-all duration-300 hover-glow press-bounce ripple-effect shadow-lg"
             >
               {loading ? (
                 <div className="flex items-center gap-3">
@@ -207,7 +207,7 @@ export default function LoginForm() {
         <TabsContent value="otp" className="animate-slide-up">
           <div className="space-y-6">
             <div className="space-y-3">
-              <Label htmlFor="otpPhone" className="text-white font-semibold text-lg">📱 Phone Number</Label>
+              <Label htmlFor="otpPhone" className="text-white font-semibold text-lg drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">📱 Phone Number</Label>
               <Input
                 id="otpPhone"
                 type="tel"
@@ -219,7 +219,7 @@ export default function LoginForm() {
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 className="h-14 text-lg glass border-white/20 text-white placeholder-white/60 focus:border-yellow-300 focus:ring-yellow-300/50 transition-all duration-300"
               />
-              <p className="text-sm text-white/70">Enter your phone number to receive a one-time code</p>
+              <p className="text-sm text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]">Enter your phone number to receive a one-time code</p>
             </div>
 
             <div className="flex gap-3">
@@ -227,7 +227,7 @@ export default function LoginForm() {
                 type="button"
                 onClick={sendLoginOtp}
                 disabled={loading || !isPhoneValid}
-                className="flex-1 h-12 gradient-secondary text-white rounded-xl transition-all duration-300 hover-glow press-bounce ripple-effect"
+                className="flex-1 h-12 gradient-secondary text-white rounded-xl transition-all duration-300 hover-glow press-bounce ripple-effect shadow-lg font-semibold"
               >
                 📤 Send OTP
               </Button>
@@ -235,14 +235,14 @@ export default function LoginForm() {
                 type="button"
                 onClick={resendLoginOtp}
                 disabled={loading || !isPhoneValid}
-                className="flex-1 h-12 glass border-white/20 text-white hover:bg-white/10 rounded-xl transition-all duration-300 hover-glow press-bounce"
+                className="flex-1 h-12 glass border-white/20 text-white hover:bg-white/10 rounded-xl transition-all duration-300 hover-glow press-bounce shadow-lg font-semibold"
               >
                 🔄 Resend
               </Button>
             </div>
 
             <div className="space-y-3">
-              <Label htmlFor="otpCode" className="text-white font-semibold text-lg">🔢 OTP Code</Label>
+              <Label htmlFor="otpCode" className="text-white font-semibold text-lg drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">🔢 OTP Code</Label>
               <Input
                 id="otpCode"
                 placeholder="Enter received code"
@@ -256,7 +256,7 @@ export default function LoginForm() {
               type="button"
               onClick={verifyLoginOtp}
               disabled={loading || !isPhoneValid || !otpCode}
-              className="w-full h-14 text-xl font-bold gradient-primary text-white rounded-xl transition-all duration-300 hover-glow press-bounce ripple-effect"
+              className="w-full h-14 text-xl font-bold gradient-primary text-white rounded-xl transition-all duration-300 hover-glow press-bounce ripple-effect shadow-lg"
             >
               {loading ? (
                 <div className="flex items-center gap-3">
@@ -276,11 +276,11 @@ export default function LoginForm() {
 
       <div className="text-center space-y-4">
         <div className="flex justify-center gap-6 text-sm">
-          <a className="text-white/80 hover:text-yellow-300 transition-colors duration-300 underline" href="/forgot-password">
+          <a className="text-white/90 hover:text-yellow-300 transition-colors duration-300 underline drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)] font-medium" href="/forgot-password">
             🔑 Forgot password?
           </a>
-          <span className="text-white/50">•</span>
-          <a className="text-white/80 hover:text-yellow-300 transition-colors duration-300 underline" href="/signup">
+          <span className="text-white/60 drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]">•</span>
+          <a className="text-white/90 hover:text-yellow-300 transition-colors duration-300 underline drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)] font-medium" href="/signup">
             ✨ Create account
           </a>
         </div>

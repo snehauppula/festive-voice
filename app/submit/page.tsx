@@ -22,7 +22,7 @@ export default function SubmitPage() {
           <div className="flex items-center justify-between">
             <button
               onClick={() => window.history.back()}
-              className="flex items-center gap-2 px-4 py-2 text-white hover:text-yellow-300 hover:bg-white/10 rounded-xl transition-all duration-300 group ripple-effect"
+              className="flex items-center gap-2 px-4 py-2 text-white hover:text-yellow-300 hover:bg-white/10 rounded-xl transition-all duration-300 group ripple-effect font-semibold drop-shadow-lg"
             >
               <svg className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -30,15 +30,15 @@ export default function SubmitPage() {
               Back to Home
             </button>
             <div className="text-center">
-              <h1 className="text-xl font-bold text-white drop-shadow-lg">🎤 Audio Upload</h1>
-              <p className="text-sm text-white/80">Share your voice with the community</p>
+              <h1 className="text-xl font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">🎤 Audio Upload</h1>
+              <p className="text-sm text-white/90 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] font-medium">Share your voice with the community</p>
             </div>
             {user && (
               <div className="flex items-center gap-3">
-                <span className="text-sm text-white/90">👋 Welcome, {user.name || user.email || 'User'}</span>
+                <span className="text-sm text-white/95 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] font-medium">👋 Welcome, {user.name || user.email || 'User'}</span>
                 <button
                   onClick={logout}
-                  className="flex items-center gap-2 px-4 py-2 text-red-300 hover:text-red-200 hover:bg-red-500/20 rounded-xl transition-all duration-300 group ripple-effect"
+                  className="flex items-center gap-2 px-4 py-2 text-red-200 hover:text-red-100 hover:bg-red-500/20 rounded-xl transition-all duration-300 group ripple-effect font-semibold drop-shadow-lg"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -57,7 +57,7 @@ export default function SubmitPage() {
             <div className="glass rounded-2xl p-8 animate-bounce-in">
               <div className="flex items-center justify-center">
                 <div className="w-10 h-10 border-4 border-yellow-300 border-t-transparent rounded-full animate-spin mr-4"></div>
-                <p className="text-xl text-white font-semibold">Checking authentication...</p>
+                <p className="text-xl text-white font-semibold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">Checking authentication...</p>
               </div>
             </div>
           </div>
@@ -70,20 +70,20 @@ export default function SubmitPage() {
                 <div className="w-20 h-20 gradient-secondary rounded-full flex items-center justify-center mx-auto mb-6 animate-confetti-pop">
                   <span className="text-3xl">🔒</span>
                 </div>
-                <h1 className="text-4xl font-bold text-white mb-4 drop-shadow-lg">Authentication Required</h1>
-                <p className="text-white/90 text-lg">You need to be logged in to submit audio content</p>
+                <h1 className="text-4xl font-bold text-white mb-4 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]">Authentication Required</h1>
+                <p className="text-white/95 text-lg drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] font-medium">You need to be logged in to submit audio content</p>
               </div>
               <div className="flex gap-4 justify-center">
                 <a 
                   href="/login" 
-                  className="inline-flex items-center px-8 py-4 gradient-primary text-white font-bold rounded-xl transition-all duration-300 hover-glow press-bounce ripple-effect"
+                  className="inline-flex items-center px-8 py-4 gradient-primary text-white font-bold rounded-xl transition-all duration-300 hover-glow press-bounce ripple-effect drop-shadow-lg"
                 >
                   <span className="text-xl mr-2">🔐</span>
                   Go to Login
                 </a>
                 <button
                   onClick={() => window.history.back()}
-                  className="inline-flex items-center px-8 py-4 glass border-white/20 text-white font-bold rounded-xl transition-all duration-300 hover-glow press-bounce"
+                  className="inline-flex items-center px-8 py-4 glass border-white/20 text-white font-bold rounded-xl transition-all duration-300 hover-glow press-bounce drop-shadow-lg"
                 >
                   <span className="text-xl mr-2">←</span>
                   Go Back
