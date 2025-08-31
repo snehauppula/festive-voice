@@ -1,0 +1,8 @@
+# Python dependencies for Festive Voice
+
+# Example dependencies
+# Uncomment and edit as needed for your project
+
+# numpy>=1.20.0
+# sounddevice>=0.4.0
+# pydub>=0.25.0
