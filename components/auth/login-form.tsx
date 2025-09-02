@@ -39,7 +39,10 @@ export default function LoginForm() {
         message: 'Welcome back to Festive Voice Archive!',
         animation: 'confetti-pop'
       })
-      router.replace("/submit")
+      // Add a small delay to ensure token is set before navigation
+      setTimeout(() => {
+        router.replace("/submit")
+      }, 100)
     } catch (err: any) {
       addToast({
         type: 'error',
@@ -124,7 +127,10 @@ export default function LoginForm() {
         message: 'Welcome back to Festive Voice Archive!',
         animation: 'confetti-pop'
       })
-      router.replace("/submit")
+      // Add a small delay to ensure token is set before navigation
+      setTimeout(() => {
+        router.replace("/submit")
+      }, 100)
     } catch (err: any) {
       addToast({
         type: 'error',
